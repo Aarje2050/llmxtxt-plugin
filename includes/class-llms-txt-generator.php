@@ -21,11 +21,13 @@ class LLMS_Txt_Generator {
     public function enqueue_assets() {
         // Only load on pages/posts that have our shortcode
         global $post;
-        if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'llms_generator')) {
+        if (is_a($post, 'WP_Post') && (has_shortcode($post->post_content, 'llms_generator') || 
+            (function_exists('has_block') && has_block('shortcode', $post->post_content)))) {
+            
             // Enqueue CSS
             wp_enqueue_style(
                 'llms-generator-styles',
-                LLMS_GENERATOR_PLUGIN_URL . 'assets/css/llms-generator.css',
+                plugins_url('assets/css/llms-generator.css', dirname(__FILE__)),
                 array(),
                 LLMS_GENERATOR_VERSION
             );
@@ -33,21 +35,10 @@ class LLMS_Txt_Generator {
             // Enqueue JavaScript
             wp_enqueue_script(
                 'llms-generator-script',
-                LLMS_GENERATOR_PLUGIN_URL . 'assets/js/llms-generator.js',
+                plugins_url('assets/js/llms-generator.js', dirname(__FILE__)),
                 array('jquery'),
                 LLMS_GENERATOR_VERSION,
                 true
-            );
-            
-            // Pass variables to JavaScript
-            wp_localize_script(
-                'llms-generator-script',
-                'llmsGeneratorVars',
-                array(
-                    'ajaxUrl' => admin_url('admin-ajax.php'),
-                    'apiUrl' => LLMS_GENERATOR_API_URL,
-                    'nonce' => wp_create_nonce('llms_generator_nonce')
-                )
             );
         }
     }
@@ -62,11 +53,8 @@ class LLMS_Txt_Generator {
         // Process shortcode attributes
         $atts = shortcode_atts(
             array(
-                'title' => 'Generate Optimized LLMs.txt & Markdown Files for AI Search Engines
-',
-                'description' => 'Input a Website URL to Automatically Generate AI-Ready LLMs.txt and Markdown (.md) Files with Relevant Site Content for Enhanced SEO Performance.
-
-'
+                'title' => 'Generate LLMs.txt Files',
+                'description' => 'Enter your website URL to generate an AI-friendly LLMs.txt file.'
             ),
             $atts,
             'llms_generator'
