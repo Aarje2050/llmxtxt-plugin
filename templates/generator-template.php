@@ -26,7 +26,7 @@ if (!defined('ABSPATH')) {
         
         <div id="error-message" class="error-message" style="display:none;"></div>
         
-        <button id="generate-button" class="llms-btn llms-btn-primary">Generate LLMs.txt</button>
+        <button id="generate-button" class="llms-btn llms-btn-primary">Generate files</button>
     </div>
     
     <div id="loading-indicator" style="display: none;">
