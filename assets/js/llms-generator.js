@@ -1,74 +1,25 @@
 /**
  * LLMs.txt Generator
- * Frontend JavaScript
+ * Simple implementation that works with your Next.js API
  */
 (function($) {
     'use strict';
 
     $(document).ready(function() {
-        // API URL from WordPress
-        const API_URL = llmsGeneratorVars.apiUrl;
+        const generateBtn = $('#generate-button');
+        const urlInput = $('#website-url');
+        const errorMsg = $('#error-message');
+        const loadingIndicator = $('#loading-indicator');
+        const resultsContainer = $('#results-container');
+        const llmsTextCode = $('#llms-txt-code');
         
-        // Elements
-        const generateButton = document.getElementById('generate-button');
-        const urlInput = document.getElementById('website-url');
-        const errorMessage = document.getElementById('error-message');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const resultsContainer = document.getElementById('results-container');
-        const llmsTextCode = document.getElementById('llms-txt-code');
-        const copyButton = document.getElementById('copy-button');
-        const downloadButton = document.getElementById('download-button');
-        const editButton = document.getElementById('edit-button');
-        const editorContainer = document.getElementById('editor-container');
-        const editor = document.getElementById('editor');
-        const saveButton = document.getElementById('save-button');
-        const cancelButton = document.getElementById('cancel-button');
-        const tabButtons = document.querySelectorAll('.tab-button');
-        const tabContents = document.querySelectorAll('.tab-content');
-        
-        // Current state
-        let currentResults = null;
-        let activeUrl = null;
-        
-        // Initialize event listeners
-        if (generateButton) {
-            generateButton.addEventListener('click', handleGenerate);
-        }
-        
-        if (copyButton) {
-            copyButton.addEventListener('click', handleCopy);
-        }
-        
-        if (downloadButton) {
-            downloadButton.addEventListener('click', handleDownload);
-        }
-        
-        if (editButton) {
-            editButton.addEventListener('click', handleEdit);
-        }
-        
-        if (saveButton) {
-            saveButton.addEventListener('click', handleSave);
-        }
-        
-        if (cancelButton) {
-            cancelButton.addEventListener('click', handleCancel);
-        }
-        
-        // Initialize tab functionality
-        tabButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                handleTabChange(this);
-            });
-        });
-        
-        /**
-         * Handle generate button click
-         */
-        function handleGenerate() {
-            const url = urlInput.value.trim();
+        // Handle generate button click
+        generateBtn.on('click', function(e) {
+            e.preventDefault();
             
-            // Validate URL
+            const url = urlInput.val().trim();
+            
+            // Basic validation
             if (!url) {
                 showError('Please enter a URL');
                 return;
@@ -80,261 +31,135 @@
                 processedUrl = 'https://' + url;
             }
             
-            // Validate URL format
-            try {
-                new URL(processedUrl);
-            } catch (e) {
-                showError('Please enter a valid URL (e.g., example.com)');
-                return;
-            }
+            // Clear previous errors
+            errorMsg.hide();
             
-            // Clear previous results and errors
-            errorMessage.textContent = '';
-            errorMessage.style.display = 'none';
+            // Show loading
+            loadingIndicator.show();
+            resultsContainer.hide();
             
-            // Show loading indicator
-            loadingIndicator.style.display = 'block';
-            resultsContainer.style.display = 'none';
-            
-            // Call API
-            fetch(API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
+            // Make API request to your Next.js app
+            $.ajax({
+                url: 'https://llmstxt-next.vercel.app/api/scrape',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
                     urls: [processedUrl],
                     bulkMode: false
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Server responded with ${response.status}`);
+                }),
+                success: function(response) {
+                    // Hide loading
+                    loadingIndicator.hide();
+                    
+                    // Process response
+                    if (response && response[processedUrl]) {
+                        const result = response[processedUrl];
+                        
+                        if (result.status === 'error') {
+                            showError(result.error || 'An error occurred');
+                            return;
+                        }
+                        
+                        // Set LLMs.txt content
+                        llmsTextCode.text(result.llms_txt);
+                        
+                        // Display URLs
+                        displayUrls(result.discovered_urls || []);
+                        
+                        // Show results
+                        resultsContainer.show();
+                        
+                        // Scroll to results
+                        $('html, body').animate({
+                            scrollTop: resultsContainer.offset().top - 50
+                        }, 500);
+                    } else {
+                        showError('Invalid response from server');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    loadingIndicator.hide();
+                    showError('Failed to generate LLMs.txt: ' + (error || 'Unknown error'));
                 }
-                return response.json();
-            })
-            .then(data => {
-                // Store results
-                currentResults = data;
-                activeUrl = processedUrl;
-                
-                // Display results
-                displayResults();
-                
-                // Hide loading, show results
-                loadingIndicator.style.display = 'none';
-                resultsContainer.style.display = 'block';
-                
-                // Scroll to results
-                resultsContainer.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            })
-            .catch(error => {
-                loadingIndicator.style.display = 'none';
-                showError(`Error: ${error.message}`);
             });
-        }
+        });
         
-        /**
-         * Display the results
-         */
-        function displayResults() {
-            if (!currentResults || !activeUrl) return;
+        // Handle tab switching
+        $('.tab-button').on('click', function() {
+            const tabId = $(this).data('tab');
             
-            const result = currentResults[activeUrl];
+            // Update active tab
+            $('.tab-button').removeClass('active');
+            $(this).addClass('active');
             
-            if (result.status === 'error') {
-                showError(result.error);
-                return;
-            }
-            
-            // Display LLMs.txt content
-            llmsTextCode.textContent = result.llms_txt;
-            
-            // Display token analytics
-            displayTokenAnalytics(result.llms_txt);
-            
-            // Display discovered URLs
-            displayDiscoveredUrls(result.discovered_urls);
-        }
+            // Show selected content
+            $('.tab-content').removeClass('active');
+            $('#' + tabId + '-content').addClass('active');
+        });
         
-        /**
-         * Display token analytics
-         */
-        function displayTokenAnalytics(content) {
-            const analyticsContainer = document.getElementById('token-analytics-content');
-            // Implement token counting logic or make another API call
-            // This is simplified - you might want to use a proper token counter
-            const tokenCount = countTokens(content);
+        // Handle copy button
+        $('#copy-button').on('click', function() {
+            const content = llmsTextCode.text();
+            if (!content) return;
             
-            analyticsContainer.innerHTML = `
-                <div class="analytics-summary">
-                    <div class="summary-item">
-                        <div class="summary-label">Total Tokens</div>
-                        <div class="summary-value">${tokenCount}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Characters</div>
-                        <div class="summary-value">${content.length}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Words</div>
-                        <div class="summary-value">${countWords(content)}</div>
-                    </div>
-                </div>
-                <div class="token-explanation">
-                    <p>Tokens are the basic units processed by AI models like GPT-3.5 and Claude.</p>
-                    <p>A token can be as short as one character or as long as one word.</p>
-                </div>
-            `;
-        }
-        
-        /**
-         * Display discovered URLs
-         */
-        function displayDiscoveredUrls(urls) {
-            const urlsContainer = document.getElementById('discovered-urls-content');
-            
-            if (!urls || urls.length === 0) {
-                urlsContainer.innerHTML = '<p>No URLs discovered.</p>';
-                return;
-            }
-            
-            const urlList = urls.map(url => `<li>${url}</li>`).join('');
-            urlsContainer.innerHTML = `<ul class="url-list">${urlList}</ul>`;
-        }
-        
-        /**
-         * Handle copy button click
-         */
-        function handleCopy() {
-            if (!currentResults || !activeUrl) return;
-            
-            const content = currentResults[activeUrl].llms_txt;
             navigator.clipboard.writeText(content)
-                .then(() => {
-                    showNotice('Content copied to clipboard!');
+                .then(function() {
+                    showNotice('Copied to clipboard!');
                 })
-                .catch(err => {
-                    showError('Failed to copy content. Please try again.');
+                .catch(function() {
+                    showError('Failed to copy. Please try selecting and copying manually.');
                 });
+        });
+        
+        // Handle download button
+        $('#download-button').on('click', function() {
+            const content = llmsTextCode.text();
+            if (!content) return;
+            
+            // Create blob and download
+            const blob = new Blob([content], {type: 'text/plain'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'LLMs.txt';
+            link.click();
+            
+            showNotice('LLMs.txt downloaded');
+        });
+        
+        // Helper function to display URLs
+        function displayUrls(urls) {
+            const container = $('#discovered-urls-content');
+            
+            if (!urls.length) {
+                container.html('<p>No URLs discovered.</p>');
+                return;
+            }
+            
+            let html = '<ul class="url-list">';
+            urls.forEach(function(url) {
+                html += '<li>' + url + '</li>';
+            });
+            html += '</ul>';
+            
+            container.html(html);
         }
         
-        /**
-         * Handle download button click
-         */
-        function handleDownload() {
-            if (!currentResults || !activeUrl) return;
-            
-            const content = currentResults[activeUrl].llms_txt;
-            const blob = new Blob([content], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'LLMs.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showNotice('LLMs.txt downloaded successfully!');
-        }
-        
-        /**
-         * Handle edit button click
-         */
-        function handleEdit() {
-            if (!currentResults || !activeUrl) return;
-            
-            editor.value = currentResults[activeUrl].llms_txt;
-            document.getElementById('llms-txt-code').parentElement.style.display = 'none';
-            editorContainer.style.display = 'block';
-        }
-        
-        /**
-         * Handle save button click
-         */
-        function handleSave() {
-            if (!currentResults || !activeUrl) return;
-            
-            currentResults[activeUrl].llms_txt = editor.value;
-            llmsTextCode.textContent = editor.value;
-            
-            editorContainer.style.display = 'none';
-            document.getElementById('llms-txt-code').parentElement.style.display = 'block';
-            
-            showNotice('Changes saved successfully!');
-        }
-        
-        /**
-         * Handle cancel button click
-         */
-        function handleCancel() {
-            editorContainer.style.display = 'none';
-            document.getElementById('llms-txt-code').parentElement.style.display = 'block';
-        }
-        
-        /**
-         * Handle tab change
-         */
-        function handleTabChange(clickedTab) {
-            const tab = clickedTab.getAttribute('data-tab');
-            
-            // Update active tab button
-            tabButtons.forEach(btn => btn.classList.remove('active'));
-            clickedTab.classList.add('active');
-            
-            // Update active tab content
-            tabContents.forEach(content => content.classList.remove('active'));
-            document.getElementById(`${tab}-content`).classList.add('active');
-        }
-        
-        /**
-         * Show error message
-         */
+        // Helper function to show errors
         function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
+            errorMsg.text(message).show();
         }
         
-        /**
-         * Show notice
-         */
+        // Helper function to show notices
         function showNotice(message) {
-            // Create notice element
-            const notice = document.createElement('div');
-            notice.className = 'llms-notice';
-            notice.textContent = message;
-            
-            // Add to document
-            document.body.appendChild(notice);
-            
-            // Remove after delay
-            setTimeout(() => {
-                notice.classList.add('fadeout');
-                setTimeout(() => {
-                    document.body.removeChild(notice);
-                }, 300);
+            const notice = $('<div class="llms-notice"></div>')
+                .text(message)
+                .appendTo('body');
+                
+            setTimeout(function() {
+                notice.fadeOut(300, function() {
+                    notice.remove();
+                });
             }, 3000);
-        }
-        
-        /**
-         * Count tokens (simplified approximation)
-         */
-        function countTokens(text) {
-            // This is a very rough approximation
-            // For a more accurate count, consider using a proper tokenizer
-            return Math.ceil(text.length / 4);
-        }
-        
-        /**
-         * Count words
-         */
-        function countWords(text) {
-            return text.split(/\s+/).filter(Boolean).length;
         }
     });
 })(jQuery);
