@@ -62,8 +62,11 @@ class LLMS_Txt_Generator {
         // Process shortcode attributes
         $atts = shortcode_atts(
             array(
-                'title' => 'Generate LLMs.txt Files',
-                'description' => 'Enter your website URL to generate an AI-friendly LLMs.txt file.'
+                'title' => 'Generate Optimized LLMs.txt & Markdown Files for AI Search Engines
+',
+                'description' => 'Input a Website URL to Automatically Generate AI-Ready LLMs.txt and Markdown (.md) Files with Relevant Site Content for Enhanced SEO Performance.
+
+'
             ),
             $atts,
             'llms_generator'
