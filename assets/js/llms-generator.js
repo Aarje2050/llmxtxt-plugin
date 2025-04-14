@@ -40,7 +40,7 @@
             
             // Make API request to your Next.js app
             $.ajax({
-                url: 'https://llmstxt-next.vercel.app/api/scrape',
+                url: 'https://llmstxt-next.vercel.app/api/generate',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
